@@ -168,6 +168,7 @@ class SudokuBoard {
 
     // ################ System test ################
 
+
     def solve_all(grid: String) {
         val start = System.nanoTime
         init_grid_value(grid)
@@ -176,19 +177,33 @@ class SudokuBoard {
         println("(" + ((System.nanoTime - start) / 1e9).toString() + "sec)")
         if (solution("state") == "solved") values = solution
     }
+
+    // ################ FILE I/O ###################
+
+
+    def read_csv(filename: String) : String = {
+        val src = scala.io.Source.fromFile("input.csv").getLines()
+        var input: String = ""
+        for (line <- src) { input += line.split(",").mkString("") }
+        return input
+    }
+
+    def write_csv(filename: String) {
+        val pw = new java.io.PrintWriter(new java.io.File(filename))
+        for (r <- sudokuSquares.ROWS) { pw.write((for (c <- sudokuSquares.COLS) yield (values(r + "" + c) + ",")).mkString + System.lineSeparator) }
+        pw.close()
+    }
 }
 
 
 object Sudoku {
     def main(args: Array[String]) {
         val sudokuBoard = new SudokuBoard
-        var grid1: String = "003020600900305001001806400008102900700000008006708200002609500800203009005010300"
+        var input: String = "input.csv"
 
-        sudokuBoard.sudokuSquares.test()
-        sudokuBoard.init_grid_value(grid1)
+        var grid = sudokuBoard.read_csv(input)
+        sudokuBoard.solve_all(grid)
         sudokuBoard.display()
-
-        sudokuBoard.solve_all(grid1)
-        sudokuBoard.display()
+        sudokuBoard.write_csv("output.csv")
     }
 }
