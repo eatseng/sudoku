@@ -51,35 +51,40 @@ class sudokuSquares {
 class SudokuBoard {
     val sudokuSquares = new sudokuSquares
     var values = new collection.mutable.HashMap[String, String]
+    var checked_values = new collection.mutable.HashMap[String, String]
 
     // ################ Parse a Grid ################
 
 
     def calc_init_possible_moves() : collection.mutable.HashMap[String, String] = {
-        //adds all possible values the square can take on by removing value of square's PEERS from all DIGITS
-        val processed_values = collection.mutable.HashMap[String, String]() ++= values
+        //traverse each square, with each empty square the loop finds, populate it with all possible digits,
+        //then remove digits that its peers have already taken.
+        val processed_values = collection.mutable.HashMap[String, String]() ++= values  // makes a copy of original values
         for (s <- sudokuSquares.SQUARES; if "0.".contains(values(s))) {
             processed_values(s) = sudokuSquares.DIGITS
-            for (s2 <- sudokuSquares.PEERS(s)) processed_values(s) = processed_values(s).replace(values(s2), "")
+            for (s2 <- sudokuSquares.PEERS(s)) {
+                processed_values(s) = processed_values(s).replace(values(s2), "")
+            }
         }
         processed_values("state") = "passed"
         return processed_values
     }
 
     def init_grid_value(grid: String) {
-        // "Convert grid into a dict of {square: char} with '0' or '.' for empties."
+        // Convert grid into a dict of {square: char} with '0' or '.' for empties.
         val chars = for (c <- grid; if sudokuSquares.DIGITS.contains(c) || "0.".contains(c)) yield (c + "")
         assert(chars.length == 81)
-        for (el <- sudokuSquares.SQUARES.zip(chars)) values(el._1) = el._2
+        for (el <- sudokuSquares.SQUARES.zip(chars)) { values(el._1) = el._2 }
+        for (el <- sudokuSquares.SQUARES.zip(chars)) { checked_values(el._1) = "" }
     }
 
     // ################ Constraint Propagation ################
 
 
     def assign(vals: collection.mutable.HashMap[String, String], s:String, d:String) : collection.mutable.HashMap[String, String] = {
-        // """Eliminate all the other values (except d) from values[s] and propagate.
+        // Assign value by eliminating all other values (except d) from values[s] and propagate.
         val other_values = vals(s).replace(d, "")
-        if (other_values.forall(d2 => eliminate(vals, s, d2 + "")("state") == "passed")) {
+        if (eliminate_all(other_values, vals, s)) {
             vals("state") = "passed"
             return vals
         } else {
@@ -89,35 +94,49 @@ class SudokuBoard {
     }
 
     def eliminate(vals: collection.mutable.HashMap[String, String], s:String, d:String) : collection.mutable.HashMap[String, String] = {
-        // """Eliminate d from values[s]; propagate when values or places <= 2.
-        // Return values, except return False if a contradiction is detected."""
+        // Eliminate d from values(s); propagate elimination of d to other squares when values(s).length <= 2.
+        // Sets fail or pass flag depending on whether elimination was successful
         vals("state") = "failed"
         if (!vals(s).contains(d)) {
+            // d has already been eliminated - do nothing and set passed flag
             vals("state") = "passed"
-            return vals  // Already eliminated
+            return vals  
         }
         vals(s) = vals(s).replace(d, "")
         // ## (1) If a square s is reduced to one value d2, then eliminate d2 from the PEERS.
         if (vals(s).length == 0) {
-            return vals
+            checked_values(s) += d
+            return vals // return vals with fail flag
         } else if (vals(s).length == 1) {
             val d2 = vals(s)
-            if (!sudokuSquares.PEERS(s).forall(s2 => eliminate(vals, s2, d2)("state") == "passed")) {
-                return vals
+            if (!eliminate_all(sudokuSquares.PEERS(s), vals, d2)) {
+                return vals // return vals with fail flag
             }
         }
-        // ## (2) If a unit u is reduced to only one place for a value d, then put it there.
+        // ## (2) Finds all other squares that can take on multiple values, if the possibility of 
+        // those squares' values have been reduced down to a single value, try assigning that value to the square
         for (u <- sudokuSquares.UNITS(s)) {
             val dplaces = for (s <- u; if vals(s).contains(d)) yield (s)
             if (dplaces.length == 0) {
-                return vals
+                return vals // return vals with fail flag
             } else if (dplaces.length == 1) {
                 if (!(assign(vals, dplaces(0), d)("state") == "passed"))
-                    return vals
+                    return vals // return vals with fail flag
             }
         }
         vals("state") = "passed"
         return vals
+    }
+
+
+    // ################ Util functions ####################
+    def eliminate_all(other_values: String, vals: collection.mutable.HashMap[String, String], s:String) : Boolean = {
+        // Util function to make code read cleaner - eliminate other_values from collection of values at that square
+        return other_values.forall(d2 => eliminate(vals, s, d2 + "")("state") == "passed")
+    }
+
+    def eliminate_all(other_values: scala.collection.immutable.Set[String], vals: collection.mutable.HashMap[String, String], d:String) : Boolean = {
+        return other_values.forall(s2 => eliminate(vals, s2, d + "")("state") == "passed")
     }
 
     // ################ Display as 2-D grid ################
@@ -139,12 +158,8 @@ class SudokuBoard {
     // ################ Search ################
 
 
-    def solve(vals: collection.mutable.HashMap[String, String]) : collection.mutable.HashMap[String, String] = {
-        return search(vals)
-    }
-
     def search(vals: collection.mutable.HashMap[String, String]) : collection.mutable.HashMap[String, String] = {
-        // "Using depth-first search and propagation, try all possible values."
+        // "Using depth-first search, try all possible values and propagation."
         if (vals("state") == "failed") { return vals }
         if (vals("state") == "passed" && sudokuSquares.SQUARES.forall(s => vals(s).length == 1)) {
             vals("state") = "solved"
@@ -157,14 +172,14 @@ class SudokuBoard {
         for (s <- sudokuSquares.SQUARES; if vals(s).length > 1) pq.enqueue(vals(s).length -> s)
         val min_s = pq.dequeue()
 
-        // val vals_copy = collection.mutable.HashMap[String, String]() ++= vals
-        return some( for (d <- vals(min_s._2)) yield search(assign(new collection.mutable.HashMap[String, String]() ++= vals, min_s._2, d + "")) )
-
-        return vals
+        //create an array of values that records the next moves, and using some() to pick one set of values that has been solved.
+        return some( for (d <- vals(min_s._2); if !(checked_values(min_s._2).contains(d))) yield search(assign(new collection.mutable.HashMap[String, String]() ++= vals, min_s._2, d + "")) )
     }
 
     def some(arr: scala.collection.immutable.IndexedSeq[collection.mutable.HashMap[String, String]]) : collection.mutable.HashMap[String, String] = {
+        // Select and return values that have been solved
         for (vals <- arr; if (vals("state") == "solved")) return vals
+        // else return values with failed flag
         values("state") = "failed"
         return values
     }
@@ -172,11 +187,11 @@ class SudokuBoard {
     // ################ System test ################
 
 
-    def solve_all(grid: String) {
+    def solve(grid: String) {
         val start = System.nanoTime
         //time the performance of algorithm
         init_grid_value(grid)
-        val solution = solve(calc_init_possible_moves())
+        val solution = search(calc_init_possible_moves())
         println(solution("state"))
 
         println("(" + ((System.nanoTime - start) / 1e9).toString() + "sec)")
@@ -208,7 +223,7 @@ object Sudoku {
         var output: String = "output.csv"
         var grid = sudokuBoard.read_csv(input)
     
-        sudokuBoard.solve_all(grid)
+        sudokuBoard.solve(grid)
         sudokuBoard.display()
         sudokuBoard.write_csv(output)
     }
