@@ -123,14 +123,14 @@ class SudokuBoard {
     // ################ Display as 2-D grid ################
 
 
-    def display() {
+    def display(vals: collection.mutable.HashMap[String, String] = values) {
         // "Display these values as a 2-D grid."
-        val width = 1 + (for (s <- sudokuSquares.SQUARES) yield (values(s).length)).max
+        val width = 1 + (for (s <- sudokuSquares.SQUARES) yield (vals(s).length)).max
         val line_el = List.fill(width * 3)("-").mkString
         val line = List.fill(3)(line_el).mkString("+")
 
         for (r <- sudokuSquares.ROWS) {
-            println((for (c <- sudokuSquares.COLS) yield (values(r + "" + c) + " " + (if ("36".contains(c)) "|" else ""))).mkString)
+            println((for (c <- sudokuSquares.COLS) yield (vals(r + "" + c) + " " + (if ("36".contains(c)) "|" else ""))).mkString)
             if ("CF".contains(r))
                 println(line)
         }
@@ -139,16 +139,13 @@ class SudokuBoard {
     // ################ Search ################
 
 
-    def solve(vals: collection.mutable.HashMap[String, String] = values) : collection.mutable.HashMap[String, String] = {
+    def solve(vals: collection.mutable.HashMap[String, String]) : collection.mutable.HashMap[String, String] = {
         return search(vals)
     }
 
-
     def search(vals: collection.mutable.HashMap[String, String]) : collection.mutable.HashMap[String, String] = {
         // "Using depth-first search and propagation, try all possible values."
-        if (vals("state") == "failed") {
-            return vals
-        }
+        if (vals("state") == "failed") { return vals }
         if (vals("state") == "passed" && sudokuSquares.SQUARES.forall(s => vals(s).length == 1)) {
             vals("state") = "solved"
             return vals
@@ -160,10 +157,16 @@ class SudokuBoard {
         for (s <- sudokuSquares.SQUARES; if vals(s).length > 1) pq.enqueue(vals(s).length -> s)
         val min_s = pq.dequeue()
 
-        val vals_copy = collection.mutable.HashMap[String, String]() ++= vals
-        for (d <- vals(min_s._2)) return search(assign(vals_copy, min_s._2, d + ""))
+        // val vals_copy = collection.mutable.HashMap[String, String]() ++= vals
+        return some( for (d <- vals(min_s._2)) yield search(assign(new collection.mutable.HashMap[String, String]() ++= vals, min_s._2, d + "")) )
 
         return vals
+    }
+
+    def some(arr: scala.collection.immutable.IndexedSeq[collection.mutable.HashMap[String, String]]) : collection.mutable.HashMap[String, String] = {
+        for (vals <- arr; if (vals("state") == "solved")) return vals
+        values("state") = "failed"
+        return values
     }
 
     // ################ System test ################
@@ -171,9 +174,11 @@ class SudokuBoard {
 
     def solve_all(grid: String) {
         val start = System.nanoTime
+        //time the performance of algorithm
         init_grid_value(grid)
         val solution = solve(calc_init_possible_moves())
         println(solution("state"))
+
         println("(" + ((System.nanoTime - start) / 1e9).toString() + "sec)")
         if (solution("state") == "solved") values = solution
     }
@@ -200,10 +205,11 @@ object Sudoku {
     def main(args: Array[String]) {
         val sudokuBoard = new SudokuBoard
         var input: String = "input.csv"
-
+        var output: String = "output.csv"
         var grid = sudokuBoard.read_csv(input)
+    
         sudokuBoard.solve_all(grid)
         sudokuBoard.display()
-        sudokuBoard.write_csv("output.csv")
+        sudokuBoard.write_csv(output)
     }
 }
