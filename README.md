@@ -17,8 +17,9 @@ I also have other collections of games I have programmed in the past on github (
 To Run
 ------
 Specifiy the csv input filename in var input and output csv filename in var output.
-To compile code - "scalac -d sudoku_class sudoku.scala"
-To execute code - "scala -cp sudoku_class Sudoku"
+
+1. To compile code - "scalac -d sudoku_class sudoku.scala"
+2. To execute code - "scala -cp sudoku_class Sudoku"
 
 Sudoku Strategy
 ---------------
