@@ -8,6 +8,7 @@ In this coding exercise, I have studied A Pencil-and-Paper Algorithm for Solving
 3. Caching failing DFS attempts
  
 The the improved algorithm result:
+
 1. ~200% more efficient on easy puzzles
 2. > 700% on hard puzzles.
 
