@@ -3,7 +3,7 @@ Sudoku - Insight Data Engineering Challenge
 
 In this coding exercise, I have studied A Pencil-and-Paper Algorithm for Solving Sudoku Puzzles(http://www.ams.org/notices/200904/tx090400460p.pdf) and Solving Every Sudoku Puzzle(http://norvig.com/sudoku.html), and I made the following revamp to Peter Norvig's code:
 
-1. Converted Python into Scala
+1. Converted Python into Scala (first time coding in Scala)
 2. Created an efficient algorithm to populate initial squares
 3. Caching failing DFS attempts
  
