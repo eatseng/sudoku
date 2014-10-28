@@ -11,7 +11,7 @@ The the improved algorithm result:
 1. ~200% more efficient on easy puzzles
 2. > 700% on hard puzzles.
 
-I also have other collections of games I have programmed in the past on github (https://github.com/eatseng/appacademy/tree/master/games) that can be candidates of evaluation. Thank you.
+I also have other collections of games I have programmed in the past on github (https://github.com/eatseng/appacademy/tree/master/games) that can be candidates of evaluation. [Project Asteroid can be played here http://morning-ocean-9992.herokuapp.com/ Controls are w-s-a-d, f to fire] Thank you.
 
 To Run
 ------
